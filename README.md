@@ -1,7 +1,7 @@
 # Practical Machine Learning and Deep Learning - Assignment 2 - Movie Recommender System
 ## Developer
 
-Rafail Venediktov
+### Rafail Venediktov
 
 r.venediktov@innopolis.university
 
@@ -63,24 +63,7 @@ movie-recommender-system
     └── evaluate.py         # script that performs evaluation of the given model
 ```
 
-### Expected Report Structure
 
-```
-# Introduction
-...
-# Data analysis
-...
-# Model Implementation
-...
-# Model Advantages and Disadvantages
-...
-# Training Process
-...
-# Evaluation
-...
-# Results
-...
-```
 ## Basic usage
 
 ### Setup
