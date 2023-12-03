@@ -81,3 +81,18 @@ movie-recommender-system
 # Results
 ...
 ```
+## Basic usage
+
+### Setup
+
+```bash
+git clone https://github.com/rafailvv/text-de-toxification.git
+```
+### Install requirements
+```
+pip install -r requirements.txt
+```
+### Evaluate model
+```bash
+python benchmark/evaluate.py
+```
