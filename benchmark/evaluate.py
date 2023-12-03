@@ -1,9 +1,15 @@
+import time
+
 import pandas as pd
 import numpy as np
 import torch
 from sklearn.preprocessing import LabelEncoder
 from torch import nn
+from torch.nn.functional import mse_loss
+from torch.utils.data import DataLoader
 
+from benchmark.data.dataset import MovieDataset
+import pickle
 
 class RecommenderNet(nn.Module):
     def __init__(self, num_zip_codes, num_release_years, num_occupations, num_genres, embedding_size):
@@ -43,18 +49,25 @@ class RecommenderNet(nn.Module):
         return x.squeeze()
 
 
-df = pd.read_csv("../data/interim/merged.csv")
+df = pd.read_csv("data/preprocessed.csv")
 all_genres = ["unknown", "Action", "Adventure", "Animation", "Children's",
               "Comedy", "Crime", "Documentary", "Drama", "Fantasy",
               "Film-Noir", "Horror", "Musical", "Mystery", "Romance",
               "Sci-Fi", "Thriller", "War", "Western"]
 
-occupation_encoder = LabelEncoder()
-zip_code_encoder = LabelEncoder()
-release_year_encoder = LabelEncoder()
-df['zip_code'] = zip_code_encoder.fit_transform(df['zip_code'])
-df['release_year'] = release_year_encoder.fit_transform(df['release_year'])
-df['occupation'] = occupation_encoder.fit_transform(df['occupation'])
+with open('../models/occupation_encoder.pkl', 'rb') as file:
+    occupation_encoder = pickle.load(file)
+with open('../models/zip_code_encoder.pkl', 'rb') as file:
+    zip_code_encoder = pickle.load(file)
+with open('../models/release_year_encoder.pkl', 'rb') as file:
+    release_year_encoder = pickle.load(file)
+
+# occupation_encoder = LabelEncoder()
+# zip_code_encoder = LabelEncoder()
+# release_year_encoder = LabelEncoder()
+# df['zip_code'] = zip_code_encoder.fit_transform(df['zip_code'])
+# df['release_year'] = release_year_encoder.fit_transform(df['release_year'])
+# df['occupation'] = occupation_encoder.fit_transform(df['occupation'])
 
 embedding_size = 50
 batch_size = 32
@@ -123,15 +136,27 @@ def recommend_movies(model, age, gender, occupation, zip_code, num_recommendatio
     return recommended_movies_df
 
 
+def evaluate_model(model, test_loader):
+    model.eval()
+    mse = 0
+    with torch.no_grad():
+        for (zip_codes, release_years, ages, occupations, genders, genre_features), ratings in test_loader:
+            outputs = model(zip_codes, release_years, ages, occupations, genders, genre_features) * 5
+            mse += mse_loss(outputs, ratings)
+    mse = mse / len(test_loader)
+    return np.sqrt(mse)
+
+
 # Example user details
 while True:
     menu = int(input("""
 Menu:
 1. Enter user data (age, gender, occupation, zip code) manually
 2. Enter id of existed user.
-3. Exit
+3. Calculate RMSE for all dataset
+4. Exit
 
-Enter 1, 2 or 3: """))
+Enter 1, 2, 3 or 4: """))
 
     if menu == 2:
         user_df = pd.read_csv('../data/interim/user.csv')
@@ -153,8 +178,14 @@ Enter 1, 2 or 3: """))
     elif menu == 1:
         age = int(input("Age: "))
         gender = input("Gender M (male) or F (female): ")
-        occupation = input("Occupation:")
-        zip_code = input("Zip code:")
+        occupation = input("Occupation: ")
+        zip_code = input("Zip code: ")
+    elif menu == 3:
+        test_loader = DataLoader(MovieDataset(df), batch_size=batch_size)
+        rmse = evaluate_model(model, test_loader)
+        print(f'RMSE on test set: {rmse}')
+        time.sleep(1)
+        continue
     else:
         exit()
 
@@ -166,4 +197,4 @@ Enter 1, 2 or 3: """))
         top_movies_df = recommend_movies(model, age, gender, occupation, zip_code, num_recommendations)
         print(top_movies_df)
     except:
-        print("Input error, please try again")
+        print("Input error, most likely not contained in the dataset. Please try again.")
